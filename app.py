@@ -1,24 +1,29 @@
-from fastai import *
-from fastai.vision import *
-import fastai
-import sys
 
+
+import sys
+from base64 import b64decode
+from keras.applications import imagenet_utils
 from io import BytesIO
 from typing import List, Dict, Union, ByteString, Any
-
 import os
 import flask
-
+import re
 import requests
 import torch
 import json
+import numpy
 from flask import Flask, jsonify, request, Response
+from src.model import Model
 
+import torchvision.transforms as transforms
+from fastai.vision import *
+
+from PIL import Image
 app = Flask(__name__)
 
-def load_model(path=".", model_name="modelweights.pth"):
-    learn = load_learner(path, fname=model_name)
-    return learn
+def load_model(path="C:\\Users\\zhiji\\Documents\\Projects\\ImplementAI\\Image-Classifier\\data\\models\\"):
+    model = load_learner(path, "trained_model.pkl")
+    return model
 
 def prepare_image(image, target):
     # if the image mode is not RGB, convert it
@@ -27,42 +32,43 @@ def prepare_image(image, target):
 
     # resize the input image and preprocess it
     image = image.resize(target)
-    image = img_to_array(image)
+    image = np.array(image)
     image = np.expand_dims(image, axis=0)
-    image = imagenet_utils.preprocess_input(image)
+    # image = imagenet_utils.preprocess_input(image)
 
     # return the processed image
     return image
 
-
-"""
+""" 
 API
 """
 
 @app.route("/predict", methods=['POST'])
 def predict():
-    if flask.request.files.get("image"):
+    print(len(request.files))
+
+    if request.files:
+                request.files['photo']
+                img = open_image(request.files['photo'])
             # read the image in PIL format
-            image = flask.request.files["image"].read()
-            image = Image.open(io.BytesIO(image))
 
             # preprocess the image and prepare it for classification
-            image = prepare_image(image, target=(512, 385))
 
             # classify the input image and then initialize the list
             # of predictions to return to the client
-            preds = model.predict(image)
-            results = imagenet_utils.decode_predictions(preds)
-            data["predictions"] = []
+                preds = model.predict(img)
+                print(preds)
+                # results = imagenet_utils.decode_predictions(preds) 
+                data["predictions"] = preds
 
-            # loop over the results and add them to the list of
-            # returned predictions
-            for (imagenetID, label, prob) in results[0]:
-                r = {"label": label, "probability": float(prob)}
-                data["predictions"].append(r)
+                # loop over the results and add them to the list of
+                # returned predictions
+                # for (imagenetID, label, prob) in results[0]:
+                #     r = {"label": label, "probability": float(prob)}
+                #     data["predictions"].append(r)
 
-            # indicate that the request was a success
-            data["success"] = True
+                # indicate that the request was a success
+                data["success"] = True
 
     # return the data dictionary as a JSON response
     return flask.jsonify(data)
@@ -72,7 +78,7 @@ def predict():
 END API
 """
 
-model = load_model('models')
+model = load_model()
 
 if __name__ == "__main__":
-    app.run(port=8080, debug=True)
+    app.run(port=3001, debug=True)
